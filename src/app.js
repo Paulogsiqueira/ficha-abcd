@@ -1,4 +1,6 @@
 
+import { OPCOES, normalizePlan } from "./ficha-ia.js";
+
 export function boot(STORE) {
   "use strict";
   var LETTERS = ["A", "B", "C", "D"];
@@ -112,7 +114,7 @@ export function boot(STORE) {
     if ((!planLoaded || !sessLoaded) && view !== "ajustes") return;
     document.querySelectorAll("[data-view]").forEach(function (b) { if (b.dataset.view === view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     if (view === "ajustes") { main.innerHTML = ajustesHTML(); return; }
-    if (!plan || !plan.treinos) { main.innerHTML = '<p class="empty">Sua ficha ainda não tem exercícios. Em Ajustes, importe o backup exportado da ficha antiga.</p>'; return; }
+    if (!plan || !plan.treinos || onb.ativo) { main.innerHTML = onbHTML(); return; }
     if (!letter) letter = active ? active.treino : nextLetter();
     main.innerHTML = view === "treino" ? treinoHTML() : view === "evolucao" ? evolucaoHTML() : view === "ajustes" ? ajustesHTML() : historicoHTML();
     if (view === "evolucao") drawChart();
@@ -416,6 +418,63 @@ export function boot(STORE) {
   var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(drawChart, 120); });
 
   /* ---------- ajustes: conta e backup ---------- */
+  /* ---------- criar ficha: questionário + IA ---------- */
+  var onb = { ativo: false, r: { objetivo: "hipertrofia", nivel: "iniciante", dias: "4", minutos: "60", local: "academia", limitacoes: "", idade: "", sexo: "" }, busy: false, erro: null, previa: null };
+  try { var savedR = JSON.parse(localStorage.getItem("ficha_onb") || "null"); if (savedR) Object.assign(onb.r, savedR); } catch (e) {}
+  function sel(id, k, opts) { return '<label class="f wide">' + esc(id) + '<select id="onb-' + k + '" data-onb="' + k + '">' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(onb.r[k]) === String(o[0]) ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select></label>"; }
+  function onbHTML() {
+    var h = '<div class="panel"><h2>' + (plan && plan.treinos ? "Refazer minha ficha" : "Vamos montar sua ficha") + '</h2><div class="meta">Responda e a IA monta um treino ABCD para você. Os treinos seguem em rodízio: A, B, C, D, A…</div></div>';
+    if (onb.previa) {
+      h += '<div class="panel"><h2>Sua ficha</h2>';
+      LETTERS.forEach(function (l) {
+        var t = onb.previa.treinos[l];
+        h += '<div class="' + l + '" style="display:grid;gap:4px"><div style="display:flex;gap:10px;align-items:center"><span class="badge">' + l + '</span><b style="font-weight:600">' + esc(t.titulo) + '</b></div>' +
+          t.exercicios.map(function (e) { return '<div class="h-ex num">' + esc(e.nome) + ' <span>· ' + e.series + " × " + e.repsMin + "–" + e.repsMax + (e.unidade === "seg" ? "s" : "") + "</span></div>"; }).join("") + "</div>";
+      });
+      h += '<div class="note">Ficha gerada por IA. Ela não substitui a orientação de um profissional de educação física; ajuste cargas e exercícios ao que você sente.</div>';
+      h += '<button class="btn primary" style="--plate:var(--accent);--on-plate:var(--surface)" data-act="onb-usar">Usar esta ficha</button><div class="btn-row"><button class="btn quiet" style="background:var(--surface-2)" data-act="onb-gerar">Gerar outra</button><button class="btn quiet" style="background:var(--surface-2)" data-act="onb-voltar">Mudar respostas</button></div></div>';
+      return h;
+    }
+    h += '<form class="panel" id="onb-form"><div class="field-grid">' +
+      sel("Objetivo", "objetivo", OPCOES.objetivo) + sel("Experiência", "nivel", OPCOES.nivel) + sel("Onde treina", "local", OPCOES.local) +
+      sel("Dias por semana", "dias", [["2", "2 dias"], ["3", "3 dias"], ["4", "4 dias"], ["5", "5 dias"], ["6", "6 dias"]]) +
+      sel("Tempo por treino", "minutos", [["40", "40 min"], ["50", "50 min"], ["60", "1 hora"], ["75", "1h15"], ["90", "1h30"]]) +
+      '<label class="f half">Idade (opcional)<input id="onb-idade" data-onb="idade" inputmode="numeric" value="' + esc(onb.r.idade) + '"></label>' +
+      sel("Sexo (opcional)", "sexo", [["", "Prefiro não dizer"], ["feminino", "Feminino"], ["masculino", "Masculino"]]).replace('class="f wide"', 'class="f half"') +
+      '<label class="f wide">Lesões ou limitações (opcional)<input id="onb-limitacoes" data-onb="limitacoes" placeholder="ex.: dor no joelho direito" value="' + esc(onb.r.limitacoes) + '"></label></div>';
+    h += '<button class="btn primary" style="--plate:var(--accent);--on-plate:var(--surface)" type="submit"' + (onb.busy ? " disabled" : "") + ">" + (onb.busy ? "Montando sua ficha… (até 30 s)" : "Gerar minha ficha com IA") + "</button>" ;
+    if (onb.erro) h += '<div class="err-line">' + esc(onb.erro) + "</div>";
+    if (plan && plan.treinos) h += '<button class="link" type="button" style="justify-self:start;padding-left:0" data-act="onb-cancelar">Cancelar e manter a ficha atual</button>';
+    return h + "</form>";
+  }
+  function onbSaveR() { try { localStorage.setItem("ficha_onb", JSON.stringify(onb.r)); } catch (e) {} }
+  async function onbGerar() {
+    onb.busy = true; onb.erro = null; render(true);
+    try { var res = await STORE.gerarFicha(onb.r); onb.previa = normalizePlan(res); }
+    catch (e) { onb.erro = (e && e.message) || "Não consegui gerar a ficha."; }
+    onb.busy = false; render(true); window.scrollTo(0, 0);
+  }
+  main.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.dataset.onb) { onb.r[t.dataset.onb] = t.value; onbSaveR(); }
+  }, true);
+  main.addEventListener("change", function (e) { var t = e.target; if (t.dataset.onb) { onb.r[t.dataset.onb] = t.value; onbSaveR(); } }, true);
+  main.addEventListener("submit", function (e) { if (e.target.id !== "onb-form") return; e.preventDefault(); e.stopImmediatePropagation(); if (!onb.busy) onbGerar(); }, true);
+  main.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]"); if (!b || b.dataset.act.indexOf("onb-") !== 0) return;
+    e.stopImmediatePropagation();
+    var a = b.dataset.act;
+    if (a === "onb-abrir") { onb.ativo = true; onb.previa = null; onb.erro = null; view = "treino"; }
+    else if (a === "onb-cancelar") { onb.ativo = false; onb.previa = null; onb.erro = null; }
+    else if (a === "onb-gerar") { onb.previa = null; onbGerar(); return; }
+    else if (a === "onb-voltar") { onb.previa = null; }
+    else if (a === "onb-usar") {
+      plan = clone(onb.previa); savePlan(); planLoaded = true; drafts = {};
+      onb = Object.assign(onb, { ativo: false, previa: null, erro: null }); letter = null; view = "treino";
+    }
+    render(true); window.scrollTo(0, 0);
+  }, true);
+
   var importMsg = null, importData = null;
   function ajustesHTML() {
     var f = finished();
@@ -427,7 +486,8 @@ export function boot(STORE) {
       '<label class="f">Importar backup (.json)<input type="file" id="import-file" accept="application/json,.json"></label>';
     if (importData) h += '<div class="note">Importar ' + importData.n + ' treino(s)' + (importData.plano ? " e a ficha" : "") + '? Treinos com o mesmo código serão substituídos.</div><div class="btn-row"><button class="btn danger" data-act="import-yes">Importar</button><button class="btn quiet" style="background:var(--surface-2)" data-act="import-no">Cancelar</button></div>';
     if (importMsg) h += '<div class="note">' + esc(importMsg) + '</div>';
-    h += '</div><div class="panel"><h2>Sair</h2><div class="meta">Seus treinos ficam salvos na nuvem.</div><button class="btn quiet" style="background:var(--surface-2)" data-act="logout">Sair da conta</button></div>';
+    h += '</div><div class="panel"><h2>Ficha</h2><div class="meta">Monte uma ficha nova respondendo algumas perguntas. Seu histórico de treinos é mantido.</div><button class="btn quiet" style="background:var(--surface-2)" data-act="onb-abrir">Refazer minha ficha</button></div>';
+    h += '<div class="panel"><h2>Sair</h2><div class="meta">Seus treinos ficam salvos na nuvem.</div><button class="btn quiet" style="background:var(--surface-2)" data-act="logout">Sair da conta</button></div>';
     return h;
   }
   function exportBackup() {

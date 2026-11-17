@@ -28,6 +28,16 @@ function startApp(sb, user) {
     db: store.db,
     email: user.email,
     refresh: store.refresh,
+    async gerarFicha(respostas) {
+      if (!navigator.onLine) throw new Error("Sem internet. Conecte-se para gerar a ficha.");
+      const { data, error } = await sb.functions.invoke("gerar-ficha", { body: { respostas } });
+      if (error) {
+        let msg = "";
+        try { msg = (await error.context.json()).erro; } catch { /* sem corpo */ }
+        throw new Error(msg || "A IA não respondeu. Tente de novo em instantes.");
+      }
+      return data.plano;
+    },
     async signOut() {
       store.clear();
       try { localStorage.removeItem(USER_KEY); } catch { /* ignore */ }

@@ -132,3 +132,5 @@ details.h summary::-webkit-details-marker { display: none; }
 #auth form { display: grid; gap: 12px; }
 #auth .msg { font-size: 14.5px; }
 #auth .msg.err { color: var(--warn); font-weight: 500; }
+
+label.f.half { grid-column: span 2; }

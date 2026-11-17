@@ -2,6 +2,19 @@ import "./style.css";
 import { createClient } from "@supabase/supabase-js";
 import { makeStore } from "./store.js";
 import { boot } from "./app.js";
+import { registerSW } from "virtual:pwa-register";
+
+// Atualização automática: quando sai versão nova, o app recarrega sozinho
+// (os dados ficam salvos no aparelho e na nuvem antes disso).
+registerSW({
+  immediate: true,
+  onRegisteredSW(_url, reg) {
+    if (!reg) return;
+    const check = () => { if (navigator.onLine) reg.update().catch(() => {}); };
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+    setInterval(check, 30 * 60 * 1000);
+  },
+});
 
 // Chave publicável: pode ficar no código; quem protege os dados é o RLS da tabela `docs`.
 const URL_ = import.meta.env.VITE_SUPABASE_URL || "https://rzkvwspbipqijgmzanyn.supabase.co";

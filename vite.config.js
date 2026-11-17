@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "script",
+      injectRegister: false,
       includeAssets: ["apple-touch-icon.png"],
       manifest: {
         name: "Ficha ABCD",

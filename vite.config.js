@@ -26,9 +26,13 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallback: "index.html",
-        globPatterns: ["**/*.{js,css,html,png,svg}"],
+        // A página sempre vem da rede quando há internet (assim nunca aponta para arquivos antigos);
+        // sem internet, usa a última cópia guardada.
+        navigateFallback: null,
+        globPatterns: ["**/*.{js,css,png,svg}"],
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
+          { urlPattern: ({ request }) => request.mode === "navigate", handler: "NetworkFirst", options: { cacheName: "paginas", networkTimeoutSeconds: 4, cacheableResponse: { statuses: [200] } } },
           { urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/, handler: "CacheFirst", options: { cacheName: "fontes", expiration: { maxEntries: 20, maxAgeSeconds: 31536000 }, cacheableResponse: { statuses: [0, 200] } } },
         ],
       },

@@ -22,21 +22,36 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 </style>
 </head>
 <body>
-<div id="boot-msg" style="font:16px -apple-system,system-ui,sans-serif;padding:48px 20px;color:#17212b">Carregando a Ficha ABCD…</div>
+<div id="boot-msg" style="font:16px -apple-system,system-ui,sans-serif;padding:48px 20px;color:#17212b;background:#e9edf1;min-height:100vh;box-sizing:border-box">Carregando a Ficha ABCD…</div>
 <script>
-  // Diagnóstico: se o app não abrir, mostra o erro na tela em vez de uma página em branco.
+  // Partida segura: se os arquivos do app não carregarem (versão antiga guardada no aparelho),
+  // limpa o cache e recarrega uma vez sozinho; se ainda falhar, mostra o erro e um botão.
   (function () {
-    var erros = [];
-    function show() {
-      var el = document.getElementById("boot-msg"), a = document.getElementById("app"), u = document.getElementById("auth");
-      if (!el) return;
-      if ((a && !a.hidden) || (u && !u.hidden)) { el.remove(); return; }
-      el.innerHTML = "<b>O app não abriu.</b><br>Tire um print desta tela e mande para o Claude.<br><br><small>" + (erros.join("<br>") || "Sem erro registrado (o script não terminou de carregar).") + "<br>" + navigator.userAgent + "</small>";
+    var erros = [], booted = false;
+    function ok() { var a = document.getElementById("app"), u = document.getElementById("auth"); return (a && !a.hidden) || (u && !u.hidden); }
+    function reparar() {
+      try { sessionStorage.setItem("ficha_reparo", String(Date.now())); } catch (e) {}
+      var tarefas = [];
+      try { if (navigator.serviceWorker) tarefas.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+      try { if (window.caches) tarefas.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) {}
+      Promise.all(tarefas).catch(function () {}).then(function () { location.reload(); });
     }
-    window.addEventListener("error", function (e) { erros.push((e.message || "erro") + " @ " + (e.filename || "").split("/").pop() + ":" + (e.lineno || "")); show(); });
-    window.addEventListener("unhandledrejection", function (e) { erros.push("promessa: " + (e.reason && (e.reason.message || e.reason))); show(); });
-    var obs = setInterval(function () { var a = document.getElementById("app"), u = document.getElementById("auth"); if ((a && !a.hidden) || (u && !u.hidden)) { clearInterval(obs); var el = document.getElementById("boot-msg"); if (el) el.remove(); } }, 200);
-    setTimeout(show, 8000);
+    function jaTentou() { try { var v = Number(sessionStorage.getItem("ficha_reparo")); return v && Date.now() - v < 60000; } catch (e) { return false; } }
+    function falhou() {
+      if (booted || ok()) return;
+      if (!jaTentou()) { document.getElementById("boot-msg").textContent = "Atualizando o app…"; reparar(); return; }
+      var el = document.getElementById("boot-msg"); if (!el) return;
+      el.innerHTML = '<b>O app não abriu.</b><br>Verifique a internet e toque em tentar de novo.<br><br><button id="boot-retry" style="font:inherit;font-weight:600;padding:12px 18px;border:0;border-radius:6px;background:#1c5cb8;color:#fff">Tentar de novo</button><br><br><small>' + (erros.join("<br>") || "Os arquivos do app não carregaram.") + "<br>" + navigator.userAgent + "</small>";
+      document.getElementById("boot-retry").onclick = reparar;
+    }
+    window.addEventListener("error", function (e) {
+      var t = e.target;
+      if (t && (t.tagName === "SCRIPT" || t.tagName === "LINK")) { erros.push("não carregou: " + (t.src || t.href || "").split("/").pop()); setTimeout(falhou, 300); return; }
+      erros.push((e.message || "erro") + " @ " + (e.filename || "").split("/").pop() + ":" + (e.lineno || ""));
+    }, true);
+    window.addEventListener("unhandledrejection", function (e) { erros.push("promessa: " + (e.reason && (e.reason.message || e.reason))); });
+    var obs = setInterval(function () { if (ok()) { booted = true; clearInterval(obs); var el = document.getElementById("boot-msg"); if (el) el.remove(); } }, 150);
+    setTimeout(falhou, 12000);
   })();
 </script>
 <div id="auth" hidden>

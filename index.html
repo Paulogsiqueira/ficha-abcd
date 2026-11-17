@@ -22,6 +22,23 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 </style>
 </head>
 <body>
+<div id="boot-msg" style="font:16px -apple-system,system-ui,sans-serif;padding:48px 20px;color:#17212b">Carregando a Ficha ABCD…</div>
+<script>
+  // Diagnóstico: se o app não abrir, mostra o erro na tela em vez de uma página em branco.
+  (function () {
+    var erros = [];
+    function show() {
+      var el = document.getElementById("boot-msg"), a = document.getElementById("app"), u = document.getElementById("auth");
+      if (!el) return;
+      if ((a && !a.hidden) || (u && !u.hidden)) { el.remove(); return; }
+      el.innerHTML = "<b>O app não abriu.</b><br>Tire um print desta tela e mande para o Claude.<br><br><small>" + (erros.join("<br>") || "Sem erro registrado (o script não terminou de carregar).") + "<br>" + navigator.userAgent + "</small>";
+    }
+    window.addEventListener("error", function (e) { erros.push((e.message || "erro") + " @ " + (e.filename || "").split("/").pop() + ":" + (e.lineno || "")); show(); });
+    window.addEventListener("unhandledrejection", function (e) { erros.push("promessa: " + (e.reason && (e.reason.message || e.reason))); show(); });
+    var obs = setInterval(function () { var a = document.getElementById("app"), u = document.getElementById("auth"); if ((a && !a.hidden) || (u && !u.hidden)) { clearInterval(obs); var el = document.getElementById("boot-msg"); if (el) el.remove(); } }, 200);
+    setTimeout(show, 8000);
+  })();
+</script>
 <div id="auth" hidden>
   <div class="disc-row"><span class="A" style="background:var(--red);color:var(--on-red)">A</span><span style="background:var(--blue);color:var(--on-blue)">B</span><span style="background:var(--yellow);color:var(--on-yellow)">C</span><span style="background:var(--green);color:var(--on-green)">D</span></div>
   <h1>Ficha ABCD</h1>

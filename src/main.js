@@ -85,11 +85,12 @@ async function main() {
     document.getElementById("auth-form").hidden = true;
     return;
   }
-  const sb = createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  // lock simples: o navigator.locks do Safari antigo pode travar o getSession e deixar a tela em branco.
+  const sb = createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, lock: async (_n, _t, fn) => fn() } });
   let user = null;
   try {
-    const { data } = await sb.auth.getSession();
-    user = data.session && data.session.user;
+    const res = await Promise.race([sb.auth.getSession(), new Promise((r) => setTimeout(() => r(null), 4000))]);
+    user = res && res.data && res.data.session && res.data.session.user;
   } catch { /* offline */ }
   // Na academia sem internet: abre com os dados guardados no aparelho; a sessão é renovada quando a conexão voltar.
   if (!user) {

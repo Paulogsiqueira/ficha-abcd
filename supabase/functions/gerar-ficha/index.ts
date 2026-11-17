@@ -78,7 +78,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const LIMITE_DIA = 8;
-const MODELOS = (Deno.env.get("GEMINI_MODEL") || "gemini-flash-latest,gemini-2.5-flash,gemini-flash-lite-latest").split(",");
+const MODELOS = (Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash,gemini-flash-lite-latest,gemini-flash-latest").split(",");
 
 function resp(status, body) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
@@ -87,11 +87,25 @@ function resp(status, body) {
 async function gemini(prompt, key) {
   let ultimo = "";
   for (const m of MODELOS) {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m.trim()}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.6 } }),
-    });
+    const modelo = m.trim();
+    const cfg = { responseMimeType: "application/json", temperature: 0.6 };
+    // Sem "pensamento" longo: a ficha sai em poucos segundos.
+    if (modelo.includes("2.5")) cfg.thinkingConfig = { thinkingBudget: 0 };
+    const t0 = Date.now();
+    let r;
+    try {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: cfg }),
+        signal: AbortSignal.timeout(25000),
+      });
+    } catch (e) {
+      ultimo = modelo + ": " + (e.name === "TimeoutError" ? "demorou mais de 25 s" : e.message);
+      console.error("gemini", ultimo);
+      continue;
+    }
+    console.log("gemini", modelo, r.status, Date.now() - t0, "ms");
     if (r.ok) {
       const j = await r.json();
       const t = j?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
@@ -100,7 +114,8 @@ async function gemini(prompt, key) {
       continue;
     }
     ultimo = r.status + " " + (await r.text()).slice(0, 200);
-    if (r.status !== 404 && r.status !== 429 && r.status !== 503) break;
+    console.error("gemini erro", ultimo);
+    if (r.status === 401 || r.status === 403) break;
   }
   throw new Error("Gemini: " + ultimo);
 }
@@ -114,7 +129,9 @@ Deno.serve(async (req) => {
   const sb = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_ANON_KEY"), {
     global: { headers: { Authorization: req.headers.get("Authorization") || "" } },
   });
+  console.log("etapa: auth");
   const { data: u } = await sb.auth.getUser();
+  console.log("etapa: auth ok", !!u?.user);
   if (!u?.user) return resp(401, { erro: "Entre na sua conta de novo." });
 
   const dia = new Date().toISOString().slice(0, 10);

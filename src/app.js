@@ -442,7 +442,7 @@ export function boot(STORE) {
       '<label class="f half">Idade (opcional)<input id="onb-idade" data-onb="idade" inputmode="numeric" value="' + esc(onb.r.idade) + '"></label>' +
       sel("Sexo (opcional)", "sexo", [["", "Prefiro não dizer"], ["feminino", "Feminino"], ["masculino", "Masculino"]]).replace('class="f wide"', 'class="f half"') +
       '<label class="f wide">Lesões ou limitações (opcional)<input id="onb-limitacoes" data-onb="limitacoes" placeholder="ex.: dor no joelho direito" value="' + esc(onb.r.limitacoes) + '"></label></div>';
-    h += '<button class="btn primary" style="--plate:var(--accent);--on-plate:var(--surface)" type="submit"' + (onb.busy ? " disabled" : "") + ">" + (onb.busy ? "Montando sua ficha… (até 30 s)" : "Gerar minha ficha com IA") + "</button>" ;
+    h += '<button class="btn primary" style="--plate:var(--accent);--on-plate:var(--surface)" type="submit"' + (onb.busy ? " disabled" : "") + ">" + (onb.busy ? "Montando sua ficha… (até 1 min)" : "Gerar minha ficha com IA") + "</button>" ;
     if (onb.erro) h += '<div class="err-line">' + esc(onb.erro) + "</div>";
     if (plan && plan.treinos) h += '<button class="link" type="button" style="justify-self:start;padding-left:0" data-act="onb-cancelar">Cancelar e manter a ficha atual</button>';
     return h + "</form>";

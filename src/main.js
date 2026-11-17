@@ -43,7 +43,9 @@ function startApp(sb, user) {
     refresh: store.refresh,
     async gerarFicha(respostas) {
       if (!navigator.onLine) throw new Error("Sem internet. Conecte-se para gerar a ficha.");
-      const { data, error } = await sb.functions.invoke("gerar-ficha", { body: { respostas } });
+      const call = sb.functions.invoke("gerar-ficha", { body: { respostas } });
+      const limite = new Promise((_, rej) => setTimeout(() => rej(new Error("A IA está demorando demais. Tente de novo em instantes.")), 90000));
+      const { data, error } = await Promise.race([call, limite]);
       if (error) {
         let msg = "";
         try { msg = (await error.context.json()).erro; } catch { /* sem corpo */ }

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ficha ABCD</title>
+<meta name="theme-color" content="#17212b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ficha ABCD">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; -webkit-tap-highlight-color: transparent; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+</style>
+</head>
+<body>
+<div id="auth" hidden>
+  <div class="disc-row"><span class="A" style="background:var(--red);color:var(--on-red)">A</span><span style="background:var(--blue);color:var(--on-blue)">B</span><span style="background:var(--yellow);color:var(--on-yellow)">C</span><span style="background:var(--green);color:var(--on-green)">D</span></div>
+  <h1>Ficha ABCD</h1>
+  <p class="meta">Entre para sincronizar seus treinos com a nuvem.</p>
+  <form id="auth-form">
+    <label class="f">E-mail<input id="auth-email" type="email" autocomplete="email" required></label>
+    <label class="f">Senha<input id="auth-pass" type="password" autocomplete="current-password" minlength="6" required></label>
+    <button class="btn primary" style="--plate:var(--accent);--on-plate:var(--surface)" type="submit" id="auth-go">Entrar</button>
+    <button class="link" type="button" id="auth-toggle" style="justify-self:start;padding-left:0">Criar conta</button>
+  </form>
+  <div class="msg" id="auth-msg" role="status"></div>
+</div>
+<div id="app" hidden>
+<div class="wrap">
+  <header>
+    <h1>Ficha ABCD</h1>
+    <div id="status" role="status"></div>
+  </header>
+  <nav class="views" aria-label="Seções">
+    <button data-view="treino" aria-current="page">Treino</button>
+    <button data-view="evolucao">Evolução</button>
+    <button data-view="historico">Histórico</button>
+    <button data-view="ajustes">Ajustes</button>
+  </nav>
+  <main id="main"><p class="empty">Carregando sua ficha…</p></main>
+</div>
+<div id="rest" hidden>
+  <div id="rest-bar"></div>
+  <div class="rest-in">
+    <div id="rest-time">0:00</div>
+    <div id="rest-label">Descanso</div>
+    <button id="rest-add">+15 s</button>
+    <button id="rest-skip">Pular</button>
+  </div>
+</div>
+
+
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

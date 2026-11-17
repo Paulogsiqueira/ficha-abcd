@@ -3,8 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import { makeStore } from "./store.js";
 import { boot } from "./app.js";
 
-const URL_ = import.meta.env.VITE_SUPABASE_URL;
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Chave publicável: pode ficar no código; quem protege os dados é o RLS da tabela `docs`.
+const URL_ = import.meta.env.VITE_SUPABASE_URL || "https://rzkvwspbipqijgmzanyn.supabase.co";
+const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_zR24it6gVjq9rtzP-9ch3g_IF0bNusC";
 const USER_KEY = "ficha_usuario";
 
 const authEl = document.getElementById("auth");

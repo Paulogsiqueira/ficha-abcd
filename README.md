@@ -24,7 +24,7 @@ git push -u origin main
 No repositório:
 
 1. **Settings → Pages → Source**: `GitHub Actions`.
-2. **Settings → Secrets and variables → Actions → Variables → New repository variable**:
+2. (Opcional) As chaves do projeto Supabase `ficha-abcd` já estão em `src/main.js`. Para usar outro projeto, cadastre em **Settings → Secrets and variables → Actions → Variables**:
    - `VITE_SUPABASE_URL` = Project URL
    - `VITE_SUPABASE_ANON_KEY` = chave anon / publishable
 3. **Actions → Publicar no GitHub Pages → Run workflow** (ou faça um novo push).

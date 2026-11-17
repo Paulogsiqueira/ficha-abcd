@@ -16,7 +16,7 @@ drop policy if exists "criar os meus" on public.docs;
 drop policy if exists "alterar os meus" on public.docs;
 drop policy if exists "apagar os meus" on public.docs;
 
-create policy "ler os meus"     on public.docs for select using (auth.uid() = user_id);
-create policy "criar os meus"   on public.docs for insert with check (auth.uid() = user_id);
-create policy "alterar os meus" on public.docs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "apagar os meus"  on public.docs for delete using (auth.uid() = user_id);
+create policy "ler os meus"     on public.docs for select to authenticated using ((select auth.uid()) = user_id);
+create policy "criar os meus"   on public.docs for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "alterar os meus" on public.docs for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "apagar os meus"  on public.docs for delete to authenticated using ((select auth.uid()) = user_id);

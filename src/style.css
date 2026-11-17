@@ -134,3 +134,38 @@ details.h summary::-webkit-details-marker { display: none; }
 #auth .msg.err { color: var(--warn); font-weight: 500; }
 
 label.f.half { grid-column: span 2; }
+
+/* ---------- conquista ao concluir o treino ---------- */
+.cq { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, #0b1016 72%, transparent);
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); overflow-y: auto; }
+.cq-confete { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cq-card { position: relative; width: 100%; max-width: 380px; background: var(--surface); color: var(--ink); border-radius: 16px; padding: 0 20px 18px; display: grid; gap: 10px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.35); overflow: hidden; }
+.cq-topo { margin: 0 -20px; padding: 18px 0 10px; background: var(--plate); display: grid; justify-items: center; gap: 6px; }
+.cq-trofeu { width: 112px; height: 112px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.25)); }
+.cq-selo { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--on-plate); }
+.cq h2 { font-size: 26px; margin-top: 4px; }
+.cq-total { display: grid; gap: 2px; }
+.cq-total b { font-family: var(--display); font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; }
+.cq-total span, .cq-sub, .cq-nota { color: var(--muted); font-size: 14px; }
+.cq-nota { font-size: 11.5px; line-height: 1.35; }
+.cq-eq-titulo { font-weight: 600; margin-top: 4px; }
+.cq-eq { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; text-align: left; }
+.cq-eq li { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 10px; padding: 8px 12px; font-size: 16px; }
+.cq-eq li b { font-family: var(--display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.cq-ico { font-size: 26px; width: 34px; text-align: center; }
+.cq-pr { background: color-mix(in srgb, var(--good) 14%, var(--surface)); color: var(--good); font-weight: 600; border-radius: 8px; padding: 8px 10px; font-size: 14.5px; }
+.cq-zap { display: block; min-height: 52px; line-height: 52px; border-radius: 8px; background: #1fa855; color: #fff; font-weight: 600; font-size: 17px; text-decoration: none; margin-top: 4px; }
+.cq-fechar { min-height: 44px; border: 0; background: none; color: var(--muted); font-weight: 600; text-decoration: underline; }
+@media (prefers-reduced-motion: no-preference) {
+  .cq { animation: cqFade .2s ease-out; }
+  .cq.sai { animation: cqFade .2s ease-in reverse forwards; }
+  .cq-card { animation: cqPop .45s cubic-bezier(.2,1.4,.4,1); }
+  .cq-trofeu { animation: cqTrofeu 1s cubic-bezier(.2,1.5,.4,1) .1s both; }
+  .cq-brilho { animation: cqBrilho 1.6s ease-in-out .9s 2; }
+  .cq-eq li { animation: cqSobe .4s ease-out both; animation-delay: calc(.9s + var(--i) * .15s); }
+}
+@keyframes cqFade { from { opacity: 0; } }
+@keyframes cqPop { from { transform: translateY(24px) scale(.92); opacity: 0; } }
+@keyframes cqTrofeu { 0% { transform: scale(.2) rotate(-25deg); opacity: 0; } 60% { transform: scale(1.12) rotate(6deg); opacity: 1; } 100% { transform: none; } }
+@keyframes cqBrilho { from { transform: skewX(-20deg) translateX(0); } to { transform: skewX(-20deg) translateX(170px); } }
+@keyframes cqSobe { from { transform: translateY(10px); opacity: 0; } }

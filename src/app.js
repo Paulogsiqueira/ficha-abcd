@@ -1,5 +1,6 @@
 
 import { OPCOES, normalizePlan } from "./ficha-ia.js";
+import { showConquista } from "./conquista.js";
 
 export function boot(STORE) {
   "use strict";
@@ -352,11 +353,12 @@ export function boot(STORE) {
     });
     sess.fim = Date.now(); saveActive();
     var vol = volume(sess), pv = prevs[0] ? volume(prevs[0]) : 0;
-    resumo = { treino: sess.treino, min: Math.max(1, Math.round((sess.fim - sess.inicio) / 6e4)), series: setCount(sess), vol: vol, delta: pv ? (vol / pv - 1) * 100 : null, prs: prs };
+    resumo = { treino: sess.treino, titulo: sess.titulo || (plan.treinos[sess.treino] || {}).titulo || "", min: Math.max(1, Math.round((sess.fim - sess.inicio) / 6e4)), series: setCount(sess), vol: vol, delta: pv ? (vol / pv - 1) * 100 : null, prs: prs };
     active = null; drafts = {};
     if (wake) { try { wake.release(); } catch (e) {} wake = null; }
     letter = LETTERS[(LETTERS.indexOf(sess.treino) + 1) % 4];
     window.scrollTo(0, 0);
+    try { showConquista(resumo); } catch (e) {}
   }
   function syncPlanToSession(id, removed) {
     delete drafts[letter];

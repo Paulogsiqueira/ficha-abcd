@@ -29,10 +29,58 @@ function say(text, err) { msg.textContent = text; msg.className = "msg" + (err ?
 function remember(u) { try { localStorage.setItem(USER_KEY, JSON.stringify(u)); } catch { /* ignore */ } }
 function remembered() { try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; } }
 
+// ---------- aviso de fim de descanso (Web Push) ----------
+const VAPID_PUBLIC = "BAuiRAACgBnL8qnirKTydBCHNnzx7lmmpeDi1r2OXbC468BOKLqKD-3OE6x7ONEofASp3MbSw64L5TEwgueMHtg";
+const AVISO_KEY = "ficha_avisos";
+function b64ToBytes(s) {
+  const p = "=".repeat((4 - (s.length % 4)) % 4), b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(b, (c) => c.charCodeAt(0));
+}
+let sbRef = null;
+const avisos = {
+  instalado() { return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; },
+  suportado() { return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; },
+  ativo() { try { return this.suportado() && Notification.permission === "granted" && localStorage.getItem(AVISO_KEY) === "1"; } catch { return false; } },
+  async ativar() {
+    if (!this.suportado()) throw new Error("Abra o app pelo ícone da tela de início para ativar o aviso.");
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") throw new Error("Permissão negada. Libere em Ajustes do iPhone → Notificações → Ficha ABCD.");
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    const { data: u } = await sbRef.auth.getUser();
+    const { error } = await sbRef.from("push_subs").upsert({ endpoint: j.endpoint, sub: j, user_id: u.user.id }, { onConflict: "endpoint" });
+    if (error) throw new Error("Não consegui salvar a inscrição: " + error.message);
+    try { localStorage.setItem(AVISO_KEY, "1"); } catch { /* ignore */ }
+  },
+  async desativar() {
+    try { localStorage.removeItem(AVISO_KEY); } catch { /* ignore */ }
+    try {
+      const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+      if (sub) { await sbRef.from("push_subs").delete().eq("endpoint", sub.endpoint); await sub.unsubscribe(); }
+    } catch { /* ignore */ }
+  },
+  async agendar(quandoMs, titulo, corpo) {
+    if (!this.ativo() || !navigator.onLine) return;
+    await this.cancelar();
+    await sbRef.from("avisos").insert({ enviar_em: new Date(quandoMs).toISOString(), titulo, corpo });
+  },
+  async mover(quandoMs) {
+    if (!this.ativo()) return;
+    await sbRef.from("avisos").update({ enviar_em: new Date(quandoMs).toISOString() }).eq("enviado", false).eq("cancelado", false);
+  },
+  async cancelar() {
+    if (!this.ativo()) return;
+    await sbRef.from("avisos").update({ cancelado: true }).eq("enviado", false).eq("cancelado", false);
+  },
+};
+
 let started = false;
 function startApp(sb, user) {
   if (started) return;
   started = true;
+  sbRef = sb;
   remember({ id: user.id, email: user.email });
   const store = makeStore(sb, user.id);
   authEl.hidden = true;
@@ -41,6 +89,7 @@ function startApp(sb, user) {
     db: store.db,
     email: user.email,
     refresh: store.refresh,
+    avisos,
     async gerarFicha(respostas) {
       if (!navigator.onLine) throw new Error("Sem internet. Conecte-se para gerar a ficha.");
       const call = sb.functions.invoke("gerar-ficha", { body: { respostas } });

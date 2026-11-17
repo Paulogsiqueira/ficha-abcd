@@ -287,6 +287,17 @@ export function boot(STORE) {
   }
 
   /* ---------- descanso ---------- */
+  /* aviso na tela bloqueada: agenda no servidor; se o app estiver aberto no fim, cancela e só toca o apito */
+  var avisoPend = false, avisoMsg = null;
+  function avisoCall(fn, arg) { try { var a = STORE.avisos; if (a && a.ativo()) Promise.resolve(fn === "mover" ? a.mover(arg) : a.cancelar()).catch(function () {}); } catch (e) {} }
+  function avisoAgendar(sec, info) {
+    try {
+      var a = STORE.avisos; if (!a || !a.ativo()) { avisoPend = false; return; }
+      avisoPend = true;
+      var corpo = info ? (info.prox ? "Agora: " + info.prox : "") + (info.feito ? (info.prox ? " · " : "") + "Última: " + info.feito : "") : "";
+      Promise.resolve(a.agendar(Date.now() + sec * 1000, "Hora da próxima série", corpo)).catch(function () {});
+    } catch (e) {}
+  }
   var restEl = document.getElementById("rest"), rEnd = 0, rTotal = 0, rTick = null, rHide = null, rWarned = false, rInfo = null;
   function restLabel(fim) {
     var el = document.getElementById("rest-label"), b = document.createElement("b"), sp = document.createElement("span");
@@ -294,15 +305,16 @@ export function boot(STORE) {
     sp.textContent = fim ? "Agora: " + (rInfo && rInfo.prox ? rInfo.prox : "próxima série") : (rInfo && rInfo.prox ? "Próxima: " + rInfo.prox : "Descanso");
     el.textContent = ""; el.appendChild(b); el.appendChild(sp);
   }
-  function startRest(sec, info) { rTotal = sec; rEnd = Date.now() + sec * 1000; rWarned = sec <= 12; rInfo = info || null; clearTimeout(rHide); restEl.hidden = false; restEl.classList.remove("alarm"); restLabel(false); document.getElementById("rest-add").hidden = false; clearInterval(rTick); rTick = setInterval(tickRest, 250); tickRest(); }
+  function startRest(sec, info) { avisoAgendar(sec, info); rTotal = sec; rEnd = Date.now() + sec * 1000; rWarned = sec <= 12; rInfo = info || null; clearTimeout(rHide); restEl.hidden = false; restEl.classList.remove("alarm"); restLabel(false); document.getElementById("rest-add").hidden = false; clearInterval(rTick); rTick = setInterval(tickRest, 250); tickRest(); }
   function tickRest() {
     var left = (rEnd - Date.now()) / 1000;
     document.getElementById("rest-time").textContent = mmss(left);
     document.getElementById("rest-bar").style.transform = "scaleX(" + Math.max(0, Math.min(1, left / rTotal)) + ")";
+    if (avisoPend && left <= 4 && !document.hidden) { avisoPend = false; avisoCall("cancelar"); }
     if (!rWarned && left <= 10 && left > 0) { rWarned = true; tone([0], 660, 0.12, 0.35); }
     if (left <= 0) { clearInterval(rTick); beep(); restEl.classList.add("alarm"); restLabel(true); document.getElementById("rest-add").hidden = true; rHide = setTimeout(stopRest, 12000); }
   }
-  function stopRest() { clearInterval(rTick); clearTimeout(rHide); restEl.hidden = true; restEl.classList.remove("alarm"); }
+  function stopRest() { if (avisoPend) { avisoPend = false; avisoCall("cancelar"); } clearInterval(rTick); clearTimeout(rHide); restEl.hidden = true; restEl.classList.remove("alarm"); }
   function primeAudio() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === "suspended") audio.resume(); } catch (e) {} }
   function beep() {
     try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
@@ -322,7 +334,7 @@ export function boot(STORE) {
   }
   async function requestWake() { try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release", function () { wake = null; }); } } catch (e) {} }
   document.addEventListener("visibilitychange", function () { if (!document.hidden && active) requestWake(); });
-  document.getElementById("rest-add").onclick = function () { rEnd += 15000; rTotal += 15; tickRest(); };
+  document.getElementById("rest-add").onclick = function () { rEnd += 15000; rTotal += 15; if (avisoPend) avisoCall("mover", rEnd); tickRest(); };
   document.getElementById("rest-skip").onclick = stopRest;
 
   /* ---------- ações ---------- */
@@ -486,6 +498,12 @@ export function boot(STORE) {
       '<label class="f">Importar backup (.json)<input type="file" id="import-file" accept="application/json,.json"></label>';
     if (importData) h += '<div class="note">Importar ' + importData.n + ' treino(s)' + (importData.plano ? " e a ficha" : "") + '? Treinos com o mesmo código serão substituídos.</div><div class="btn-row"><button class="btn danger" data-act="import-yes">Importar</button><button class="btn quiet" style="background:var(--surface-2)" data-act="import-no">Cancelar</button></div>';
     if (importMsg) h += '<div class="note">' + esc(importMsg) + '</div>';
+    var av = STORE.avisos;
+    h += '</div><div class="panel"><h2>Aviso de descanso</h2>';
+    if (!av || !av.suportado() || !av.instalado()) h += '<div class="meta">Para receber o aviso com a tela bloqueada, abra o app pelo ícone da tela de início (Compartilhar → Adicionar à Tela de Início no Safari).</div>';
+    else if (av.ativo()) h += '<div class="meta">Ativo neste aparelho. Quando o descanso acabar com o celular bloqueado, chega uma notificação com som.</div><div class="btn-row"><button class="btn quiet" style="background:var(--surface-2)" data-act="aviso-testar">Testar (10 s)</button><button class="btn quiet" style="background:var(--surface-2)" data-act="aviso-desativar">Desativar</button></div>';
+    else h += '<div class="meta">Receba uma notificação quando o descanso acabar, mesmo com o celular bloqueado.</div><button class="btn primary" style="--plate:var(--accent);--on-plate:var(--surface)" data-act="aviso-ativar">Ativar aviso de descanso</button>';
+    if (avisoMsg) h += '<div class="note">' + esc(avisoMsg) + '</div>';
     h += '</div><div class="panel"><h2>Ficha</h2><div class="meta">Monte uma ficha nova respondendo algumas perguntas. Seu histórico de treinos é mantido.</div><button class="btn quiet" style="background:var(--surface-2)" data-act="onb-abrir">Refazer minha ficha</button></div>';
     h += '<div class="panel"><h2>Sair</h2><div class="meta">Seus treinos ficam salvos na nuvem.</div><button class="btn quiet" style="background:var(--surface-2)" data-act="logout">Sair da conta</button></div>';
     return h;
@@ -519,7 +537,10 @@ export function boot(STORE) {
   main.addEventListener("click", function (e) {
     var b = e.target.closest("[data-act]"); if (!b) return;
     var a = b.dataset.act;
-    if (a === "export") exportBackup();
+    if (a === "aviso-ativar") { avisoMsg = "Ativando…"; render(true); STORE.avisos.ativar().then(function () { avisoMsg = "Aviso ativado. Toque em Testar e bloqueie o celular."; render(true); }, function (err) { avisoMsg = err.message; render(true); }); return; }
+    else if (a === "aviso-desativar") { STORE.avisos.desativar().then(function () { avisoMsg = "Aviso desativado."; render(true); }); return; }
+    else if (a === "aviso-testar") { STORE.avisos.agendar(Date.now() + 10000, "Teste do aviso", "Se você está vendo isto com o celular bloqueado, está funcionando.").then(function () { avisoMsg = "Bloqueie o celular agora: o aviso chega em uns 10 segundos."; render(true); }, function (err) { avisoMsg = "Não consegui agendar: " + err.message; render(true); }); return; }
+    else if (a === "export") exportBackup();
     else if (a === "sync") { STORE.refresh(); pump(); }
     else if (a === "logout") STORE.signOut();
     else if (a === "import-no") { importData = null; render(true); }

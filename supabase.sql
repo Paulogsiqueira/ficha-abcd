@@ -20,3 +20,6 @@ create policy "ler os meus"     on public.docs for select to authenticated using
 create policy "criar os meus"   on public.docs for insert to authenticated with check ((select auth.uid()) = user_id);
 create policy "alterar os meus" on public.docs for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "apagar os meus"  on public.docs for delete to authenticated using ((select auth.uid()) = user_id);
+
+-- Aviso de fim de descanso (Web Push): tabelas push_subs e avisos, função pegar_avisos(),
+-- disparar_avisos() + pg_cron a cada 5 s chamando a função enviar-avisos (ver supabase/functions).
